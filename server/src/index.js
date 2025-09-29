@@ -102,6 +102,17 @@ app.get('/geocode/search', async (req, res) => {
     }
 
     // Ordenar priorizando house_number, luego importancia, luego longitud de display_name (más específica primero)
+    // Filtrar a sólo direcciones en el estado de Nuevo León
+    function normalizeStr(s) {
+      return (s || '').toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    }
+    const allowedState = 'nuevo leon';
+    combined = combined.filter(item => {
+      const addr = item.address || {};
+      const candidates = [addr.state, addr.state_district, addr.county];
+      return candidates.some(c => normalizeStr(c) === allowedState);
+    });
+
     const mapped = combined.map(item => ({
       lat: parseFloat(item.lat),
       lng: parseFloat(item.lon),

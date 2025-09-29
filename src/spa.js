@@ -521,7 +521,13 @@ function setupManualLocationHelpers(form) {
       alert('Geolocalización no soportada');
       return;
     }
-    btn.disabled = true; btn.textContent = 'Obteniendo ubicación...';
+    // Guardar color original la primera vez
+    if (!btn.dataset.origBg) {
+      const cs = getComputedStyle(btn);
+      btn.dataset.origBg = cs.backgroundColor || '#ff6a00';
+      btn.dataset.origColor = cs.color || '#ffffff';
+    }
+    btn.disabled = true; btn.style.opacity = '0.8'; btn.textContent = 'Obteniendo ubicación...';
     navigator.geolocation.getCurrentPosition(pos => {
       const { latitude, longitude } = pos.coords;
       const latInput = form.querySelector('input[name=lat]');
@@ -536,11 +542,19 @@ function setupManualLocationHelpers(form) {
       if (sel) sel.textContent = 'Usando ubicación actual. Completa calle y número y guarda.';
       // Mantener el botón activo para permitir re-capturar ubicación si el usuario desea actualizarla.
       btn.disabled = false;
+      btn.style.opacity = '1';
       btn.dataset.locationSet = '1';
-      btn.textContent = 'Actualizar ubicación';
+      btn.textContent = 'Ubicación lista';
+      btn.style.background = '#6ED95F';
+      btn.style.color = '#062b11';
     }, err => {
       alert('Error ubicando: ' + err.message);
-      btn.disabled = false; btn.textContent = 'Usar mi ubicación actual';
+      btn.disabled = false; btn.style.opacity = '1'; btn.textContent = 'Usar mi ubicación actual';
+      // Restaurar colores originales si hubo error
+      if (btn.dataset.origBg) {
+        btn.style.background = btn.dataset.origBg;
+        btn.style.color = btn.dataset.origColor || '#fff';
+      }
     }, { enableHighAccuracy: true, timeout: 8000 });
   });
 }

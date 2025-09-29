@@ -4,14 +4,25 @@ Plataforma para que usuarios en México (en esta fase enfocada a Nuevo León) re
 
 ## Estado Actual (MVP Funcional)
 Implementado:
+ - Registro / login con JWT y contraseñas hasheadas (bcrypt).
+ - Una sola casa por usuario (constraint DB `userId @unique`).
+ - Dirección única (`addressText @unique`) con verificación de duplicados.
+ - Dirección estructurada (street, houseNumber, suburb, city, municipality, state, postcode, country) + reconstrucción determinista de `addressText`.
+ - Geocodificación Nominatim (MX) con heurísticas para número, caché 60s y rate limit (15/10s).
+ - Filtrado de resultados geocode únicamente a estado Nuevo León.
+ - Autocomplete + fallback manual (geolocalización + calle/número) cuando no hay `house_number`.
+ - Botón "Usar mi ubicación actual" siempre visible (registro y edición) con estado persistente “Ubicación lista” (verde #6ED95F).
+ - SPA vanilla (auth + dashboard + edición) con render asíncrono y mapa resiliente (recreación si cambia contenedor, watchdog, reintentos y fallback CDN Leaflet).
+ - Íconos emoji 🎃 / 🏠 y branding `👻 Spooky Route 🎃`.
+ - Logs de depuración (`SR_DEBUG`) + helper `window._srDump()`.
+ - Refresco explícito del mapa tras guardar/editar para evitar stale markers.
+ - Despliegue GitHub Pages mediante `index.html` raíz.
+ - Base dinámica del API: parámetro `?api=` o `localStorage.SR_API`.
+ - Banner automático de configuración de API en GitHub Pages / al fallar red (“Backend no accesible”) con botones Configurar / Reset.
 
-> Despliegue GitHub Pages: Este repositorio incluye un `index.html` en la raíz para servir la SPA estática. Para usarlo con un backend remoto revisa `README-gh-pages.md` y configura la URL del API vía `?api=` o `localStorage.setItem('SR_API', 'https://...')`.
-Pendiente / Futuro (prioridades sugeridas):
-6. Refresh tokens / expiración rotatoria + rate limit de login.
-7. Script smoke actualizado y suite de tests (unit + integración mock geocode).
-8. Clustering / persistir zoom/centro en localStorage.
-9. Endpoint PATCH /houses/me (semántica clara create vs update) y log histórico opcional.
-10. Offline fallback (paquete local Leaflet) para demos sin red.
+> Nota GitHub Pages: La SPA se sirve estática; requiere un backend público (Render/Railway/Fly) y configurarlo vía `?api=https://tu-backend` o `localStorage.setItem('SR_API','https://...')`. Ver `README-gh-pages.md` para detalles.
+
+Pendiente / Futuro (prioridades sugeridas): ver sección "Próximos Pasos Recomendados" más abajo.
 
 ## Stack Tecnológico
 - Backend: Node.js (ESM) + Express + Prisma + SQLite.
@@ -76,6 +87,15 @@ model House {
 
 Autenticación: encabezado `Authorization: Bearer <token>`.
 
+## Configuración de API (GitHub Pages / Entornos Estáticos)
+Cuando la app se ejecuta en `*.github.io`:
+1. Si `SR_API` no está definido y la base apunta a `localhost`, se muestra un banner rojo indicando que debes configurar la URL del backend.
+2. Opciones de configuración:
+  - Query string: `?api=https://mi-backend.app`
+  - Consola: `localStorage.setItem('SR_API','https://mi-backend.app'); location.reload();`
+3. Reset: `localStorage.removeItem('SR_API'); location.reload();`
+4. Requisitos del backend: mismos endpoints, CORS habilitado para `https://<usuario>.github.io`.
+
 ## Flujo de Uso
 1. Registrarse o iniciar sesión.
 2. Buscar dirección (autocomplete). Si falta número: escribir manualmente.
@@ -96,7 +116,17 @@ Dump rápido: `window._srDump()`.
 4. Abrir `http://localhost:3001` (por defecto PORT=3001 en `.env`).
 
 ## Próximos Pasos Recomendados (Detalle)
-Ver lista priorizada arriba (Pendiente / Futuro). En corto plazo: validaciones (zod), normalización, reverse geocoding y tests.
+1. Validaciones (zod) en auth y houses.
+2. Normalizar `addressText` y utilizar `usernameNorm`.
+3. Reverse geocoding tras geolocalizar para autocompletar calle/número.
+4. Refresh tokens + rate limit de login.
+5. Migración a React (Vite + Tailwind) y modularización de lógica (hooks mapa / geocode / geo).
+6. Script smoke nuevo + tests unit/integración (mock de geocode).
+7. Clustering y persistencia zoom/centro en localStorage.
+8. Endpoint PATCH /houses/me + histórico simple.
+9. Offline fallback de tiles / Leaflet bundle.
+10. Observabilidad ligera (conteo de búsquedas, métricas geocode).
+11. Modo multi-estado configurable (no sólo Nuevo León).
 
 ## Licencia
 Pendiente de definir.

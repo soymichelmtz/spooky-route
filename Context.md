@@ -1,6 +1,7 @@
 # Contexto General del Proyecto (Spooky Route)
 
 Este documento resume el estado actual del proyecto, las decisiones técnicas tomadas, los cambios realizados durante la(s) sesión(es) y próximos pasos sugeridos. (Última actualización: actualizada tras incluir mejoras de geolocalización, filtro a Nuevo León, botón de ubicación persistente y refresco forzado del mapa.)
+Se agregó además soporte para despliegue estático (GitHub Pages) con detección de entorno y configuración dinámica de la URL del API.
 
 ## 1. Objetivo del Proyecto
 Plataforma donde usuarios pueden:
@@ -87,6 +88,8 @@ Características:
 - Botón ubicación cambia a “Ubicación lista” y verde (#6ED95F) persistente tras fijar coordenadas.
 - Branding con `👻 Spooky Route 🎃`.
 - Logging de depuración activable con `localStorage.setItem('SR_DEBUG','1')` y helper `window._srDump()`.
+ - Detección de ejecución en GitHub Pages: banner de configuración de API si se apunta a localhost o hay fallo de red.
+ - Configuración dinámica del backend vía query `?api=` o `localStorage.SR_API`.
 
 ## 7. Cambios Clave Durante la Sesión
 1. Implementación de auth + modelos iniciales.
@@ -105,6 +108,7 @@ Características:
 14. Reconstrucción determinista de `addressText` en backend usando campos estructurados.
 15. Emojis agregados al título principal (👻 … 🎃) y ajustes de UI (logout ancho fijo, espaciado checkbox “Entrego dulces”).
 16. Refuerzo de refresco de mapa tras guardar (llamada explícita adicional a `renderMap()`).
+17. Banner de configuración de API (GitHub Pages) + script root `index.html` con aviso y cache busting.
 
 ## 8. Problemas Encontrados y Soluciones
 | Problema | Solución |
@@ -128,6 +132,7 @@ Características:
 - Sin tests actualizados (script smoke desfasado con nuevo contrato de /houses/me).
 - Sin revocación / rate limit de login (sólo geocode rate limit existente).
 - Sin soporte configuración multi-estado (hardcode Nuevo León).
+- Dependencia de backend público para funcionamiento en Pages (sin fallback offline todavía).
 
 ## 10. Próximos Pasos Sugeridos
 1. Normalizar y sanitizar `addressText` (trim, espacios, casing, acentos) + uso real de `usernameNorm`.
@@ -142,6 +147,8 @@ Características:
 10. Opción para re-abrir campo de búsqueda después de usar geolocalización (toggle/“Cambiar dirección”).
 11. Offline fallback básico de Leaflet (paquete local) para demos sin red.
 12. Observabilidad ligera (contador de búsquedas, métricas in-memory).
+13. Integrar reverse geocoding automático en flujo manual.
+14. Mejorar UX para re-activar campo de búsqueda tras usar geolocalización (toggle visible).
 
 ## 11. Cómo Activar Depuración
 En consola del navegador:

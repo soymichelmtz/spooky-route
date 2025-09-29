@@ -1,0 +1,8 @@
+{
+  "name": "spooky-route-root",
+  "private": true,
+  "workspaces": ["server"],
+  "scripts": {
+    "postinstall": "npm --workspace server run prisma:generate || echo 'Prisma generate skipped'"
+  }
+}

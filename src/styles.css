@@ -1,0 +1,24 @@
+body { font-family: system-ui, Arial, sans-serif; margin:0; background:#0d0d0f; color:#eee; }
+.container { max-width: 600px; margin: 0 auto; padding: 1rem; }
+.card { background:#181820; padding:1rem; border-radius:12px; margin-bottom:1rem; box-shadow:0 4px 10px #0006; }
+input, button { width:100%; padding:.75rem; margin-bottom:.5rem; border-radius:8px; border:1px solid #333; background:#222; color:#eee; }
+button { background:#ff6a00; border:none; font-weight:bold; cursor:pointer; }
+button:hover { background:#ff8126; }
+.topbar { display:flex; align-items:center; justify-content:space-between; gap:1rem; }
+h1 { font-size:1.4rem; margin:.2rem 0; }
+h2 { font-size:1.1rem; margin-top:0; }
+@media (min-width:700px){ .container { max-width:700px; } }
+.suggestions { background:#181820; border:1px solid #333; border-radius:8px; margin-top:4px; max-height:180px; overflow:auto; }
+.sugg-item { padding:.5rem .75rem; cursor:pointer; font-size:.8rem; border-bottom:1px solid #222; }
+.sugg-item:last-child { border-bottom:none; }
+.sugg-item:hover { background:#23232d; }
+.sugg-item.loading, .sugg-item.empty, .sugg-item.error { cursor:default; opacity:.7; }
+input#manualStreet, input#manualNumber { background:#1f1f26; }
+/* Leaflet tweaks dark background */
+.leaflet-container { background:#0d0d0f; }
+/* Emoji markers */
+.emoji-marker { background: transparent; border: none; }
+.emoji-marker .emoji-ic { font-size:28px; filter: drop-shadow(0 1px 2px #000); line-height:1; }
+/* Spinner para carga del mapa */
+.map-spinner { width:32px; height:32px; border:4px solid #333; border-top-color:#ff6a00; border-radius:50%; animation: spin 0.9s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }

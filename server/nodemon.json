@@ -1,0 +1,6 @@
+{
+  "watch": ["src", "prisma/schema.prisma"],
+  "ext": "js,json,prisma",
+  "ignore": ["../src", "node_modules", "src/routes/geocode.tmp"],
+  "delay": "200"
+}

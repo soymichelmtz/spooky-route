@@ -1,0 +1,6 @@
+node_modules
+.env
+server/dev.db
+server/dev.db-journal
+.idea
+.DS_Store

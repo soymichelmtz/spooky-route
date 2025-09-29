@@ -241,10 +241,14 @@ function attachDashboardHandlers() {
   }
   const editForm = document.getElementById('houseEditForm');
   if (editForm) {
+    // Asegurar que el botón de ubicación se vincule también en modo edición
+    setupManualLocationHelpers(editForm);
     document.getElementById('editHouseBtn').onclick = () => {
       editForm.style.display = 'block';
       document.getElementById('houseView').style.display = 'none';
       setupAutocomplete();
+      // Re-vincular por si el DOM se regeneró
+      setupManualLocationHelpers(editForm);
       // Prefill manual fields if vacíos
       const house = state.myHouse;
       const ms = document.getElementById('manualStreet');

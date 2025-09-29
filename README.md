@@ -1,6 +1,6 @@
-# Spooky Route
+# 👻 Spooky Route 🎃
 
-Plataforma para que usuarios en México registren si reparten dulces en Halloween y visualizar en un mapa (Leaflet + OpenStreetMap) las casas participantes.
+Plataforma para que usuarios en México (en esta fase enfocada a Nuevo León) registren si reparten dulces en Halloween y visualizar en un mapa (Leaflet + OpenStreetMap) las casas participantes.
 
 ## Estado Actual (MVP Funcional)
 Implementado:
@@ -12,18 +12,26 @@ Implementado:
 - Rate limit básico de geocodificación y caché TTL 60s.
 - SPA en vanilla JS (sin React todavía) con flujo: Auth → Dashboard.
 - Autocomplete de direcciones con sugerencias y fallback a captura manual de calle/número si falta house_number.
+- Botón "Usar mi ubicación actual" siempre visible (registro y edición) que fija lat/lng y permite modo manual.
+- Estado persistente del botón de ubicación: tras capturar coords cambia a "Ubicación lista" con color verde (#6ED95F).
+- Filtrado geocoding a resultados cuyo estado es Nuevo León.
 - Mapa Leaflet con carga dinámica (fallback CDN unpkg → jsDelivr), spinner, watchdog de 5s y botón de reintento.
 - Íconos emoji: 🎃 (otras casas que reparten) y 🏠 (mi casa).
 - Vista condicional: si ya tienes casa → detalles + botón Editar; si no → formulario de registro.
 - Edición de la casa rellenando previamente (prefill) los campos y el buscador.
 - Modo debug activable con `localStorage.setItem('SR_DEBUG','1')` (logs internos + helper `window._srDump()`).
 
-Pendiente / Futuro:
-- Migrar frontend a React + Vite + Tailwind.
-- Validaciones robustas (zod / joi) en payloads.
-- Refresh tokens / expiración extendida.
-- Tests automatizados actualizados (script smoke está desfasado).
-- Clustering / optimización de markers y persistir zoom/centro.
+Pendiente / Futuro (prioridades sugeridas):
+1. Validaciones robustas (zod / joi) en payloads.
+2. Uso de `usernameNorm` para normalizar logins (case / acentos) + migración derivada.
+3. Normalización de `addressText` (trim, espacios, casing, acentos).
+4. Reverse geocoding tras geolocalización para autocompletar calle/número.
+5. React + Vite + Tailwind (modularizar mapa/autocomplete/geolocalización).
+6. Refresh tokens / expiración rotatoria + rate limit de login.
+7. Script smoke actualizado y suite de tests (unit + integración mock geocode).
+8. Clustering / persistir zoom/centro en localStorage.
+9. Endpoint PATCH /houses/me (semántica clara create vs update) y log histórico opcional.
+10. Offline fallback (paquete local Leaflet) para demos sin red.
 
 ## Stack Tecnológico
 - Backend: Node.js (ESM) + Express + Prisma + SQLite.
@@ -35,11 +43,11 @@ Pendiente / Futuro:
 ## Estructura de Carpetas
 ```
 spooky-route/
-  server/        # Backend Express + Prisma
-    src/
-    prisma/
-    scripts/
-  src/           # Frontend vanilla SPA (index.html, spa.js, styles.css)
+  server/        # Backend Express + Prisma (Puerto por defecto: 3001)
+    src/         # index.js, rutas (auth, houses, geocode search inline)
+    prisma/      # schema.prisma + migraciones
+    scripts/     # scripts utilitarios (smoke / verificación, pendiente actualizar)
+  src/           # Frontend vanilla SPA (index.html, spa.js, styles.css, assets)
   Context.md     # Documento de decisiones y estado detallado
   README.md
 ```
@@ -49,6 +57,7 @@ spooky-route/
 model User {
   id           Int      @id @default(autoincrement())
   username     String   @unique
+  usernameNorm String?  @unique
   passwordHash String
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
@@ -103,19 +112,14 @@ Dump rápido: `window._srDump()`.
 ## Desarrollo Local (Resumen)
 1. Instalar dependencias en raíz: `npm install`.
 2. Ejecutar migraciones/prisma generate (si aplica): `npx prisma migrate dev` dentro de `server/`.
-3. Iniciar backend (ajustar script si existe en package.json) y servir estáticos.
-4. Abrir `http://localhost:3000` (puerto según configuración en `server/src/index.js`).
+3. Iniciar backend: `npm run dev` (desde la raíz, delega a workspace `server`).
+4. Abrir `http://localhost:3001` (por defecto PORT=3001 en `.env`).
 
-## Próximos Pasos Recomendados
-1. Añadir validaciones de esquema (zod) en auth y houses.
-2. Normalizar `addressText` (espacios, casing) antes de persistir.
-3. Dividir endpoints create/update (POST vs PATCH) para semántica clara.
-4. Implementar refresh tokens / expiración rotatoria.
-5. Migrar a React y modularizar lógica del mapa y autocomplete.
-6. Añadir pruebas (unitarias + integración de geocode mockeada).
+## Próximos Pasos Recomendados (Detalle)
+Ver lista priorizada arriba (Pendiente / Futuro). En corto plazo: validaciones (zod), normalización, reverse geocoding y tests.
 
 ## Licencia
 Pendiente de definir.
 
 ---
-Revisar `Context.md` para un historial y razones de decisiones.
+Revisar `Context.md` para historial completo, decisiones técnicas y backlog ampliado.

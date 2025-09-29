@@ -1,6 +1,18 @@
 // SPA mínima vanilla para no bloquear avance (luego se migra a React/Vite)
 
-const API = 'http://localhost:3001';
+// Detección sencilla para Github Pages: permitir configurar API externa via localStorage 'SR_API' o query ?api=
+let API = 'http://localhost:3001';
+try {
+  const isPages = location.hostname.endsWith('github.io');
+  const urlApi = new URLSearchParams(location.search).get('api');
+  const storedApi = localStorage.getItem('SR_API');
+  if (urlApi) { localStorage.setItem('SR_API', urlApi); API = urlApi; }
+  else if (storedApi) { API = storedApi; }
+  else if (isPages) {
+    // Placeholder: el usuario debe proporcionar un backend desplegado públicamente
+    console.warn('Ejecutando en GitHub Pages. Configura API con ?api=https://tu-backend o localStorage.setItem("SR_API","https://...")');
+  }
+} catch(_) {}
 // Activar logs: localStorage.setItem('SR_DEBUG','1'); Desactivar: localStorage.removeItem('SR_DEBUG')
 const DEBUG = localStorage.getItem('SR_DEBUG') === '1';
 const d = (...a) => { if (DEBUG) console.log('[SR_DEBUG]', ...a); };
@@ -60,7 +72,7 @@ function authView() {
   if (mode === 'register') {
     return `
     <div class="container">
-      <h1>Spooky Route</h1>
+  <h1>👻 Spooky Route 🎃</h1>
       <div class="card">
         <h2>Crear cuenta</h2>
         ${msg}
@@ -76,7 +88,7 @@ function authView() {
   // login por defecto
   return `
   <div class="container">
-    <h1>Spooky Route</h1>
+  <h1>👻 Spooky Route 🎃</h1>
     <div class="card">
       <h2>Iniciar sesión</h2>
       ${msg}
@@ -95,7 +107,7 @@ function dashboardView() {
   return `
   <div class="container">
     <header class="topbar">
-      <h1>Spooky Route</h1>
+  <h1>👻 Spooky Route 🎃</h1>
       <button id="logoutBtn">Salir</button>
     </header>
     <section class="card">
@@ -118,7 +130,7 @@ function dashboardView() {
           </div>
           <div id="manualHint" style="font-size:.65rem;opacity:.65;line-height:1.2;margin:.25rem 0 .4rem;display:none;">Sin resultados. Puedes escribir la calle y número manualmente y usar tu posición para guardar.</div>
           <button type="button" id="useCurrentLocationBtn" style="width:auto;padding:.45rem .75rem;font-size:.7rem;">Usar mi ubicación actual</button>
-          <label style="margin-top:.5rem;display:flex;align-items:center;gap:.4rem;"><input type="checkbox" name="givingCandy" /> Entrego dulces</label>
+          <label class="inline-checkbox" style="margin-top:.5rem;"><input type="checkbox" name="givingCandy" /> Entrego dulces</label>
           <button style="margin-top:.5rem;">Registrar</button>
           <p id="selectedAddress" style="font-size:.75rem;opacity:.8;margin-top:.4rem;">Sin dirección seleccionada</p>
           <p id="houseError" style="color:#f66;font-size:.7rem;margin:.25rem 0 0 0;"></p>
@@ -147,7 +159,7 @@ function dashboardView() {
           </div>
           <div id="manualHint" style="font-size:.65rem;opacity:.65;line-height:1.2;margin:.25rem 0 .4rem;display:none;">Sin resultados. Edita manualmente la calle/número o usa tu ubicación.</div>
           <button type="button" id="useCurrentLocationBtn" style="width:auto;padding:.45rem .75rem;font-size:.7rem;">Usar mi ubicación actual</button>
-          <label style="margin-top:.5rem;display:flex;align-items:center;gap:.4rem;"><input type="checkbox" name="givingCandy" ${house.givingCandy ? 'checked' : ''}/> Entrego dulces</label>
+          <label class="inline-checkbox" style="margin-top:.5rem;"><input type="checkbox" name="givingCandy" ${house.givingCandy ? 'checked' : ''}/> Entrego dulces</label>
           <div style="display:flex;gap:.5rem;margin-top:.5rem;">
             <button>Guardar cambios</button>
             <button type="button" id="cancelEditBtn" style="background:#444;">Cancelar</button>
@@ -232,8 +244,11 @@ function attachDashboardHandlers() {
         const body = { givingCandy: fd.get('givingCandy') === 'on', address };
         d('houseForm:posting', body);
         await api('/houses/me', { method: 'POST', body: JSON.stringify(body) });
-        await Promise.all([loadMyHouse(), loadHouses()]);
-        render();
+  await Promise.all([loadMyHouse(), loadHouses()]);
+  d('houseForm:saved', { myHouse: state.myHouse });
+  render();
+  // Refresco explícito adicional del mapa por si hubiera condiciones de re-render asincrónico
+  setTimeout(() => { try { renderMap(); } catch(_){} }, 30);
       } catch (err) { alert(err.message); }
     });
     setupAutocomplete();
@@ -283,8 +298,10 @@ function attachDashboardHandlers() {
         const body = { givingCandy: fd.get('givingCandy') === 'on', address };
         d('houseEditForm:posting', body);
         await api('/houses/me', { method: 'POST', body: JSON.stringify(body) });
-        await Promise.all([loadMyHouse(), loadHouses()]);
-        render();
+  await Promise.all([loadMyHouse(), loadHouses()]);
+  d('houseEditForm:saved', { myHouse: state.myHouse });
+  render();
+  setTimeout(() => { try { renderMap(); } catch(_){} }, 30);
       } catch (err) {
         const el = document.getElementById('houseError');
         if (el) el.textContent = err.message || 'Error guardando'; else alert(err.message);

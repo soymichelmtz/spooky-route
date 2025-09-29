@@ -4,29 +4,9 @@ Plataforma para que usuarios en México (en esta fase enfocada a Nuevo León) re
 
 ## Estado Actual (MVP Funcional)
 Implementado:
-- Registro / login con JWT (token de acceso simple) y contraseñas con bcrypt.
-- Un (1) registro de casa por usuario (enforced a nivel DB con userId @unique).
-- Detección y bloqueo de direcciones duplicadas (`addressText` @unique en House).
-- Modelo de dirección estructurada (street, houseNumber, suburb, city, municipality, state, postcode, country) más `addressText` normalizado desde la búsqueda.
-- Geocodificación vía Nominatim (solo MX) con heurísticas para número de casa, ranking de resultados y caché en memoria.
-- Rate limit básico de geocodificación y caché TTL 60s.
-- SPA en vanilla JS (sin React todavía) con flujo: Auth → Dashboard.
-- Autocomplete de direcciones con sugerencias y fallback a captura manual de calle/número si falta house_number.
-- Botón "Usar mi ubicación actual" siempre visible (registro y edición) que fija lat/lng y permite modo manual.
-- Estado persistente del botón de ubicación: tras capturar coords cambia a "Ubicación lista" con color verde (#6ED95F).
-- Filtrado geocoding a resultados cuyo estado es Nuevo León.
-- Mapa Leaflet con carga dinámica (fallback CDN unpkg → jsDelivr), spinner, watchdog de 5s y botón de reintento.
-- Íconos emoji: 🎃 (otras casas que reparten) y 🏠 (mi casa).
-- Vista condicional: si ya tienes casa → detalles + botón Editar; si no → formulario de registro.
-- Edición de la casa rellenando previamente (prefill) los campos y el buscador.
-- Modo debug activable con `localStorage.setItem('SR_DEBUG','1')` (logs internos + helper `window._srDump()`).
 
+> Despliegue GitHub Pages: Este repositorio incluye un `index.html` en la raíz para servir la SPA estática. Para usarlo con un backend remoto revisa `README-gh-pages.md` y configura la URL del API vía `?api=` o `localStorage.setItem('SR_API', 'https://...')`.
 Pendiente / Futuro (prioridades sugeridas):
-1. Validaciones robustas (zod / joi) en payloads.
-2. Uso de `usernameNorm` para normalizar logins (case / acentos) + migración derivada.
-3. Normalización de `addressText` (trim, espacios, casing, acentos).
-4. Reverse geocoding tras geolocalización para autocompletar calle/número.
-5. React + Vite + Tailwind (modularizar mapa/autocomplete/geolocalización).
 6. Refresh tokens / expiración rotatoria + rate limit de login.
 7. Script smoke actualizado y suite de tests (unit + integración mock geocode).
 8. Clustering / persistir zoom/centro en localStorage.

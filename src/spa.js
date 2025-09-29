@@ -11,6 +11,8 @@ let state = {
   houses: [],
   myHouse: null, // se llenará tras loadMyHouse
   myHouseLoaded: false, // para evitar mostrar formulario antes de saber si existe
+  authMode: 'login', // 'login' | 'register'
+  authMessage: null, // mensajes de feedback (post registro, etc.)
 };
 
 function saveToken(t) {
@@ -53,24 +55,37 @@ function render() {
 }
 
 function authView() {
+  const mode = state.authMode;
+  const msg = state.authMessage ? `<p style="margin:.5rem 0;font-size:.75rem;color:#4caf50;">${state.authMessage}</p>` : '';
+  if (mode === 'register') {
+    return `
+    <div class="container">
+      <h1>Spooky Route</h1>
+      <div class="card">
+        <h2>Crear cuenta</h2>
+        ${msg}
+        <form id="registerForm">
+          <input name="username" placeholder="Usuario" required />
+          <input name="password" type="password" placeholder="Contraseña" required />
+          <button>Registrarme</button>
+        </form>
+        <p style="font-size:.75rem;margin-top:.75rem;">¿Ya tienes cuenta? <a href="#" id="goLogin">Inicia sesión</a></p>
+      </div>
+    </div>`;
+  }
+  // login por defecto
   return `
   <div class="container">
     <h1>Spooky Route</h1>
     <div class="card">
-      <h2>Login</h2>
+      <h2>Iniciar sesión</h2>
+      ${msg}
       <form id="loginForm">
         <input name="username" placeholder="Usuario" required />
         <input name="password" type="password" placeholder="Contraseña" required />
         <button>Entrar</button>
       </form>
-    </div>
-    <div class="card">
-      <h2>Registro</h2>
-      <form id="registerForm">
-        <input name="username" placeholder="Usuario" required />
-        <input name="password" type="password" placeholder="Contraseña" required />
-        <button>Crear cuenta</button>
-      </form>
+      <p style="font-size:.75rem;margin-top:.75rem;">¿No tienes cuenta? <a href="#" id="goRegister">Regístrate</a></p>
     </div>
   </div>`;
 }
@@ -149,29 +164,42 @@ function dashboardView() {
 }
 
 function attachAuthHandlers() {
-  document.getElementById('loginForm').addEventListener('submit', async e => {
-    e.preventDefault();
-    const fd = new FormData(e.target);
-    try {
-      const { token } = await api('/auth/login', { method: 'POST', body: JSON.stringify({
-        username: fd.get('username'), password: fd.get('password')
-      })});
-      saveToken(token);
-      // Render inmediato para mostrar dashboard y mapa "placeholder"
-      render();
-      loadDashboardData();
-    } catch (err) { alert(err.message); }
-  });
-  document.getElementById('registerForm').addEventListener('submit', async e => {
-    e.preventDefault();
-    const fd = new FormData(e.target);
-    try {
-      await api('/auth/register', { method: 'POST', body: JSON.stringify({
-        username: fd.get('username'), password: fd.get('password')
-      })});
-      alert('Usuario creado, ahora inicia sesión');
-    } catch (err) { alert(err.message); }
-  });
+  const loginForm = document.getElementById('loginForm');
+  if (loginForm) {
+    loginForm.addEventListener('submit', async e => {
+      e.preventDefault();
+      const fd = new FormData(e.target);
+      try {
+        const { token } = await api('/auth/login', { method: 'POST', body: JSON.stringify({
+          username: fd.get('username'), password: fd.get('password')
+        })});
+        saveToken(token);
+        state.authMessage = null;
+        render();
+        loadDashboardData();
+      } catch (err) { alert(err.message); }
+    });
+    const goRegister = document.getElementById('goRegister');
+    if (goRegister) goRegister.addEventListener('click', e => { e.preventDefault(); state.authMode = 'register'; state.authMessage = null; render(); });
+  }
+  const registerForm = document.getElementById('registerForm');
+  if (registerForm) {
+    registerForm.addEventListener('submit', async e => {
+      e.preventDefault();
+      const fd = new FormData(e.target);
+      try {
+        await api('/auth/register', { method: 'POST', body: JSON.stringify({
+          username: fd.get('username'), password: fd.get('password')
+        })});
+        // Mensaje de éxito y volver a login
+        state.authMode = 'login';
+        state.authMessage = 'Cuenta creada. Ahora inicia sesión.';
+        render();
+      } catch (err) { alert(err.message); }
+    });
+    const goLogin = document.getElementById('goLogin');
+    if (goLogin) goLogin.addEventListener('click', e => { e.preventDefault(); state.authMode = 'login'; state.authMessage = null; render(); });
+  }
 }
 
 function attachDashboardHandlers() {

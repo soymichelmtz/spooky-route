@@ -2,6 +2,7 @@
 
 // Detección sencilla para Github Pages: permitir configurar API externa via localStorage 'SR_API' o query ?api=
 let API = 'http://localhost:3001';
+let lastNetworkError = null;
 try {
   const isPages = location.hostname.endsWith('github.io');
   const urlApi = new URLSearchParams(location.search).get('api');
@@ -36,9 +37,37 @@ async function api(path, options = {}) {
   const headers = options.headers || {};
   if (state.token) headers['Authorization'] = 'Bearer ' + state.token;
   if (options.body && !headers['Content-Type']) headers['Content-Type'] = 'application/json';
-  const res = await fetch(API + path, { ...options, headers });
-  if (!res.ok) throw new Error((await res.json()).error || 'Error');
-  return res.json();
+  try {
+    const res = await fetch(API + path, { ...options, headers });
+    if (!res.ok) {
+      let msg = 'Error';
+      try { msg = (await res.json()).error || msg; } catch {}
+      throw new Error(msg);
+    }
+    lastNetworkError = null;
+    return res.json();
+  } catch (e) {
+    if (e instanceof TypeError) {
+      lastNetworkError = e;
+      console.warn('Network/Fetch error contra API', API, e.message);
+      throw new Error('No se pudo contactar el API (' + API + '). Configura una URL pública válida.');
+    }
+    throw e;
+  }
+}
+
+function apiConfigBanner() {
+  const isPages = location.hostname.endsWith('github.io');
+  const usingLocalhost = API.includes('localhost');
+  const needs = isPages && usingLocalhost;
+  if (!needs && !lastNetworkError) return '';
+  return `<div style="background:#442222;border:1px solid #aa5555;padding:.6rem .75rem;border-radius:8px;margin-bottom:1rem;font-size:.7rem;line-height:1.3;">
+    <strong style="color:#ffb3b3;">Backend no accesible</strong><br>
+    Actual API: <code style="font-size:.65rem;">${API}</code><br>
+    ${(needs? 'Estás en GitHub Pages y la API apunta a localhost (no disponible). ':'')}Configura una URL de API pública (https) desplegada.<br>
+    <button id="setApiBtn" style="margin-top:.4rem;padding:.35rem .6rem;font-size:.65rem;">Configurar API</button>
+    <button id="clearApiBtn" style="margin-top:.4rem;margin-left:.4rem;padding:.35rem .6rem;font-size:.65rem;background:#444;">Reset</button>
+  </div>`;
 }
 
 async function loadHouses() {
@@ -57,13 +86,35 @@ function render() {
   if (!root) return;
   d('render', { token: !!state.token, myHouseLoaded: state.myHouseLoaded, hasHouse: !!state.myHouse });
   if (!state.token) {
-    root.innerHTML = authView();
+    root.innerHTML = apiConfigBanner() + authView();
     attachAuthHandlers();
+    attachApiConfigHandlers();
     return;
   }
-  root.innerHTML = dashboardView();
+  root.innerHTML = apiConfigBanner() + dashboardView();
   attachDashboardHandlers();
+  attachApiConfigHandlers();
   renderMap();
+}
+
+function attachApiConfigHandlers() {
+  const setBtn = document.getElementById('setApiBtn');
+  if (setBtn) {
+    setBtn.onclick = () => {
+      const val = prompt('URL completa del API (ej: https://spooky-backend.up.railway.app)');
+      if (val) {
+        localStorage.setItem('SR_API', val.trim());
+        location.href = location.pathname; // limpiar query
+      }
+    };
+  }
+  const clearBtn = document.getElementById('clearApiBtn');
+  if (clearBtn) {
+    clearBtn.onclick = () => {
+      localStorage.removeItem('SR_API');
+      location.reload();
+    };
+  }
 }
 
 function authView() {

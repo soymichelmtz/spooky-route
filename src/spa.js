@@ -534,8 +534,10 @@ function setupManualLocationHelpers(form) {
       if (suggestionsBox) { suggestionsBox.innerHTML = ''; suggestionsBox.style.display = 'none'; }
       const sel = document.getElementById('selectedAddress');
       if (sel) sel.textContent = 'Usando ubicación actual. Completa calle y número y guarda.';
-      btn.textContent = 'Ubicación lista';
-      setTimeout(() => { btn.disabled = false; btn.textContent = 'Usar mi ubicación actual'; }, 2500);
+      // Mantener el botón activo para permitir re-capturar ubicación si el usuario desea actualizarla.
+      btn.disabled = false;
+      btn.dataset.locationSet = '1';
+      btn.textContent = 'Actualizar ubicación';
     }, err => {
       alert('Error ubicando: ' + err.message);
       btn.disabled = false; btn.textContent = 'Usar mi ubicación actual';

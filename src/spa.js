@@ -117,7 +117,7 @@ function dashboardView() {
             </div>
           </div>
           <div id="manualHint" style="font-size:.65rem;opacity:.65;line-height:1.2;margin:.25rem 0 .4rem;display:none;">Sin resultados. Puedes escribir la calle y número manualmente y usar tu posición para guardar.</div>
-          <button type="button" id="useCurrentLocationBtn" style="width:auto;padding:.45rem .75rem;font-size:.7rem;display:none;">Usar mi ubicación actual</button>
+          <button type="button" id="useCurrentLocationBtn" style="width:auto;padding:.45rem .75rem;font-size:.7rem;">Usar mi ubicación actual</button>
           <label style="margin-top:.5rem;display:flex;align-items:center;gap:.4rem;"><input type="checkbox" name="givingCandy" /> Entrego dulces</label>
           <button style="margin-top:.5rem;">Registrar</button>
           <p id="selectedAddress" style="font-size:.75rem;opacity:.8;margin-top:.4rem;">Sin dirección seleccionada</p>
@@ -146,7 +146,7 @@ function dashboardView() {
             </div>
           </div>
           <div id="manualHint" style="font-size:.65rem;opacity:.65;line-height:1.2;margin:.25rem 0 .4rem;display:none;">Sin resultados. Edita manualmente la calle/número o usa tu ubicación.</div>
-          <button type="button" id="useCurrentLocationBtn" style="width:auto;padding:.45rem .75rem;font-size:.7rem;display:none;">Usar mi ubicación actual</button>
+          <button type="button" id="useCurrentLocationBtn" style="width:auto;padding:.45rem .75rem;font-size:.7rem;">Usar mi ubicación actual</button>
           <label style="margin-top:.5rem;display:flex;align-items:center;gap:.4rem;"><input type="checkbox" name="givingCandy" ${house.givingCandy ? 'checked' : ''}/> Entrego dulces</label>
           <div style="display:flex;gap:.5rem;margin-top:.5rem;">
             <button>Guardar cambios</button>
@@ -511,17 +511,7 @@ function setupAutocomplete() {
 
 function setupManualLocationHelpers(form) {
   const btn = document.getElementById('useCurrentLocationBtn');
-  const hint = document.getElementById('manualHint');
   if (!btn) return;
-  // Mostrar botón/hint si no hay sugerencias después de cierto tiempo de inactividad o input >= 3 sin resultados
-  const sugBox = document.getElementById('suggestions');
-  const observer = new MutationObserver(() => {
-    if (sugBox && sugBox.children.length === 0) {
-      if (hint) hint.style.display = 'block';
-      btn.style.display = 'inline-block';
-    }
-  });
-  if (sugBox) observer.observe(sugBox, { childList: true });
   btn.addEventListener('click', () => {
     if (!navigator.geolocation) {
       alert('Geolocalización no soportada');
@@ -533,11 +523,15 @@ function setupManualLocationHelpers(form) {
       const latInput = form.querySelector('input[name=lat]');
       const lngInput = form.querySelector('input[name=lng]');
       if (latInput && lngInput) { latInput.value = latitude; lngInput.value = longitude; }
-      // No tenemos fullText, pero permitiremos guardar si calle/número manual se llenan.
-      btn.textContent = 'Ubicación lista';
-      setTimeout(() => { btn.disabled = false; btn.textContent = 'Usar mi ubicación actual'; }, 3000);
+      // Ocultar campo de búsqueda al usar ubicación actual
+      const searchInput = form.querySelector('#addressSearch') || form.querySelector('#addressSearchEdit');
+      const suggestionsBox = document.getElementById('suggestions');
+      if (searchInput) { searchInput.style.display = 'none'; }
+      if (suggestionsBox) { suggestionsBox.innerHTML = ''; suggestionsBox.style.display = 'none'; }
       const sel = document.getElementById('selectedAddress');
-      if (sel) sel.textContent = 'Coordenadas establecidas (rellena calle y número)';
+      if (sel) sel.textContent = 'Usando ubicación actual. Completa calle y número y guarda.';
+      btn.textContent = 'Ubicación lista';
+      setTimeout(() => { btn.disabled = false; btn.textContent = 'Usar mi ubicación actual'; }, 2500);
     }, err => {
       alert('Error ubicando: ' + err.message);
       btn.disabled = false; btn.textContent = 'Usar mi ubicación actual';

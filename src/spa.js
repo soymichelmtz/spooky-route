@@ -116,6 +116,8 @@ function dashboardView() {
               <input id="manualNumber" placeholder="Número" style="width:100%;" />
             </div>
           </div>
+          <div id="manualHint" style="font-size:.65rem;opacity:.65;line-height:1.2;margin:.25rem 0 .4rem;display:none;">Sin resultados. Puedes escribir la calle y número manualmente y usar tu posición para guardar.</div>
+          <button type="button" id="useCurrentLocationBtn" style="width:auto;padding:.45rem .75rem;font-size:.7rem;display:none;">Usar mi ubicación actual</button>
           <label style="margin-top:.5rem;display:flex;align-items:center;gap:.4rem;"><input type="checkbox" name="givingCandy" /> Entrego dulces</label>
           <button style="margin-top:.5rem;">Registrar</button>
           <p id="selectedAddress" style="font-size:.75rem;opacity:.8;margin-top:.4rem;">Sin dirección seleccionada</p>
@@ -143,6 +145,8 @@ function dashboardView() {
               <input id="manualNumber" placeholder="Número" style="width:100%;" value="${house.houseNumber || ''}" />
             </div>
           </div>
+          <div id="manualHint" style="font-size:.65rem;opacity:.65;line-height:1.2;margin:.25rem 0 .4rem;display:none;">Sin resultados. Edita manualmente la calle/número o usa tu ubicación.</div>
+          <button type="button" id="useCurrentLocationBtn" style="width:auto;padding:.45rem .75rem;font-size:.7rem;display:none;">Usar mi ubicación actual</button>
           <label style="margin-top:.5rem;display:flex;align-items:center;gap:.4rem;"><input type="checkbox" name="givingCandy" ${house.givingCandy ? 'checked' : ''}/> Entrego dulces</label>
           <div style="display:flex;gap:.5rem;margin-top:.5rem;">
             <button>Guardar cambios</button>
@@ -213,14 +217,16 @@ function attachDashboardHandlers() {
       const lat = parseFloat(fd.get('lat'));
       const lng = parseFloat(fd.get('lng'));
       const fullText = fd.get('fullText');
-      if (!fullText || isNaN(lat) || isNaN(lng)) {
-        alert('Selecciona una dirección de las sugerencias');
+      // Permitir modo manual si no hay fullText pero sí calle/número y coords válidas
+      const manualStreet = document.getElementById('manualStreet').value.trim();
+      const manualNumber = document.getElementById('manualNumber').value.trim();
+      const usingManual = !fullText && manualStreet && !isNaN(lat) && !isNaN(lng);
+      if ((!fullText || isNaN(lat) || isNaN(lng)) && !usingManual) {
+        alert('Selecciona una sugerencia o usa tu ubicación y completa calle/número');
         return;
       }
       try {
-        const manualStreet = document.getElementById('manualStreet').value.trim();
-        const manualNumber = document.getElementById('manualNumber').value.trim();
-        const address = { fullText, lat, lng };
+        const address = { fullText: fullText || manualStreet + (manualNumber ? ' ' + manualNumber : ''), lat, lng };
         if (manualStreet) address.street = manualStreet;
         if (manualNumber) address.houseNumber = manualNumber;
         const body = { givingCandy: fd.get('givingCandy') === 'on', address };
@@ -231,6 +237,7 @@ function attachDashboardHandlers() {
       } catch (err) { alert(err.message); }
     });
     setupAutocomplete();
+    setupManualLocationHelpers(form);
   }
   const editForm = document.getElementById('houseEditForm');
   if (editForm) {
@@ -258,14 +265,15 @@ function attachDashboardHandlers() {
       const lat = parseFloat(fd.get('lat'));
       const lng = parseFloat(fd.get('lng'));
       const fullText = fd.get('fullText');
-      if (!fullText || isNaN(lat) || isNaN(lng)) {
-        alert('Selecciona una dirección válida');
+      const manualStreet = document.getElementById('manualStreet').value.trim();
+      const manualNumber = document.getElementById('manualNumber').value.trim();
+      const usingManual = !fullText && manualStreet && !isNaN(lat) && !isNaN(lng);
+      if ((!fullText || isNaN(lat) || isNaN(lng)) && !usingManual) {
+        alert('Selecciona una sugerencia o usa tu ubicación y completa calle/número');
         return;
       }
       try {
-        const manualStreet = document.getElementById('manualStreet').value.trim();
-        const manualNumber = document.getElementById('manualNumber').value.trim();
-        const address = { fullText, lat, lng };
+        const address = { fullText: fullText || manualStreet + (manualNumber ? ' ' + manualNumber : ''), lat, lng };
         if (manualStreet) address.street = manualStreet;
         if (manualNumber) address.houseNumber = manualNumber;
         const body = { givingCandy: fd.get('givingCandy') === 'on', address };
@@ -498,6 +506,42 @@ function setupAutocomplete() {
 
   document.addEventListener('click', (ev) => {
     if (ev.target !== input) sugBox.innerHTML = '';
+  });
+}
+
+function setupManualLocationHelpers(form) {
+  const btn = document.getElementById('useCurrentLocationBtn');
+  const hint = document.getElementById('manualHint');
+  if (!btn) return;
+  // Mostrar botón/hint si no hay sugerencias después de cierto tiempo de inactividad o input >= 3 sin resultados
+  const sugBox = document.getElementById('suggestions');
+  const observer = new MutationObserver(() => {
+    if (sugBox && sugBox.children.length === 0) {
+      if (hint) hint.style.display = 'block';
+      btn.style.display = 'inline-block';
+    }
+  });
+  if (sugBox) observer.observe(sugBox, { childList: true });
+  btn.addEventListener('click', () => {
+    if (!navigator.geolocation) {
+      alert('Geolocalización no soportada');
+      return;
+    }
+    btn.disabled = true; btn.textContent = 'Obteniendo ubicación...';
+    navigator.geolocation.getCurrentPosition(pos => {
+      const { latitude, longitude } = pos.coords;
+      const latInput = form.querySelector('input[name=lat]');
+      const lngInput = form.querySelector('input[name=lng]');
+      if (latInput && lngInput) { latInput.value = latitude; lngInput.value = longitude; }
+      // No tenemos fullText, pero permitiremos guardar si calle/número manual se llenan.
+      btn.textContent = 'Ubicación lista';
+      setTimeout(() => { btn.disabled = false; btn.textContent = 'Usar mi ubicación actual'; }, 3000);
+      const sel = document.getElementById('selectedAddress');
+      if (sel) sel.textContent = 'Coordenadas establecidas (rellena calle y número)';
+    }, err => {
+      alert('Error ubicando: ' + err.message);
+      btn.disabled = false; btn.textContent = 'Usar mi ubicación actual';
+    }, { enableHighAccuracy: true, timeout: 8000 });
   });
 }
 

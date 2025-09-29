@@ -3,6 +3,8 @@
   "private": true,
   "workspaces": ["server"],
   "scripts": {
-    "postinstall": "npm --workspace server run prisma:generate || echo 'Prisma generate skipped'"
+    "postinstall": "npm --workspace server run prisma:generate || echo 'Prisma generate skipped'",
+    "dev": "npm --workspace server run dev",
+    "start": "npm --workspace server run start"
   }
 }

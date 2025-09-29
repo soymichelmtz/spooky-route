@@ -44,10 +44,18 @@ router.post('/me', authMiddleware, async (req, res) => {
     const postcode = address.postcode || (address.address && address.address.postcode) || null;
     const country = address.country || (address.address && (address.address.country || address.address.country_code)) || null;
 
-    // Re construir addressText si se añadió manualmente número y no estaba en display
-    let addressText = address.fullText;
-    if (houseNumber && street && !addressText.includes(houseNumber)) {
-      addressText = `${street} ${houseNumber}, ${[suburb, city || municipality, state, postcode, country].filter(Boolean).join(', ')}`;
+    // Reconstruir addressText de forma determinista a partir de campos disponibles.
+    // Regla: si tenemos al menos street o houseNumber, generamos "<street> <houseNumber>, <suburb>, <city/municipality>, <state>, <postcode>, <country>"
+    // Caso contrario usamos address.fullText (resultado de la sugerencia original)
+    let addressText;
+    if (street || houseNumber) {
+      const line1 = [street, houseNumber].filter(Boolean).join(' ').trim();
+      const tail = [suburb, city || municipality, state, postcode, country].filter(Boolean);
+      addressText = [line1, ...tail].filter(Boolean).join(', ');
+      // fallback si quedó vacío por algún motivo
+      if (!addressText.trim()) addressText = address.fullText;
+    } else {
+      addressText = address.fullText;
     }
 
     const existing = await prisma.house.findUnique({ where: { userId } });
@@ -67,6 +75,7 @@ router.post('/me', authMiddleware, async (req, res) => {
     } else {
       house = await prisma.house.create({ data: { userId, ...data } });
     }
+    // Devolver siempre la casa resultante
     res.json(house);
   } catch (e) {
     console.error(e);

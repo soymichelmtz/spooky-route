@@ -3,7 +3,9 @@
 // Detección sencilla para Github Pages: permitir configurar API externa via localStorage 'SR_API' o query ?api=
 // Nuevo: si estamos en GitHub Pages y no se configuró nada, usar por defecto el backend público desplegado en Render.
 let API = 'http://localhost:3001';
+const DEFAULT_PAGES_API = 'https://spooky-route.onrender.com';
 let lastNetworkError = null;
+let lastHealthCheck = { ok: null, triedFallback: false };
 try {
   const isPages = location.hostname.endsWith('github.io');
   const urlApi = new URLSearchParams(location.search).get('api');
@@ -15,10 +17,46 @@ try {
     API = storedApi;
   } else if (isPages) {
     // Default público para GitHub Pages si el usuario no definió otro.
-    API = 'https://spooky-route.onrender.com';
+    API = DEFAULT_PAGES_API;
     console.info('[SpookyRoute] Usando API por defecto para Pages:', API);
   }
 } catch(_) {}
+
+async function healthCheckAndMaybeFallback() {
+  const isPages = location.hostname.endsWith('github.io');
+  if (!isPages) return; // sólo aplica en Pages
+  // Pequeño timeout (4s) para evitar quedar colgados
+  function fetchWithTimeout(url, ms = 4000) {
+    const ctrl = new AbortController();
+    const to = setTimeout(() => ctrl.abort(), ms);
+    return fetch(url, { signal: ctrl.signal }).finally(() => clearTimeout(to));
+  }
+  try {
+    const res = await fetchWithTimeout(API.replace(/\/$/, '') + '/api', 4000);
+    if (!res.ok) throw new Error('status ' + res.status);
+    lastHealthCheck.ok = true;
+    return;
+  } catch (e) {
+    lastHealthCheck.ok = false;
+    lastNetworkError = e;
+    // Si ya estamos usando el default, no hay nada que hacer.
+    if (API === DEFAULT_PAGES_API) return;
+    // Intentar fallback automático sólo una vez
+    if (!lastHealthCheck.triedFallback) {
+      lastHealthCheck.triedFallback = true;
+      try {
+        const testRes = await fetch(DEFAULT_PAGES_API + '/api', { method: 'GET' });
+        if (testRes.ok) {
+          console.warn('[SpookyRoute] API configurada falló, cambiando a default Render:', DEFAULT_PAGES_API);
+          API = DEFAULT_PAGES_API;
+          localStorage.setItem('SR_API', DEFAULT_PAGES_API);
+          lastNetworkError = null;
+          render();
+        }
+      } catch {}
+    }
+  }
+}
 // Activar logs: localStorage.setItem('SR_DEBUG','1'); Desactivar: localStorage.removeItem('SR_DEBUG')
 const DEBUG = localStorage.getItem('SR_DEBUG') === '1';
 const d = (...a) => { if (DEBUG) console.log('[SR_DEBUG]', ...a); };
@@ -65,13 +103,17 @@ function apiConfigBanner() {
   const isPages = location.hostname.endsWith('github.io');
   const usingLocalhost = API.includes('localhost');
   const needs = isPages && usingLocalhost;
-  if (!needs && !lastNetworkError) return '';
+  const failed = lastNetworkError && isPages;
+  if (!needs && !failed) return '';
   return `<div style="background:#442222;border:1px solid #aa5555;padding:.6rem .75rem;border-radius:8px;margin-bottom:1rem;font-size:.7rem;line-height:1.3;">
     <strong style="color:#ffb3b3;">Backend no accesible</strong><br>
     Actual API: <code style="font-size:.65rem;">${API}</code><br>
-    ${(needs? 'Estás en GitHub Pages y la API apunta a localhost (no disponible). ':'')}Configura una URL de API pública (https) desplegada.<br>
+    ${(needs? 'Estás en GitHub Pages y la API apunta a localhost (no disponible). ':'')}
+    ${(failed? 'La URL configurada no respondió correctamente. ':'')}Configura una URL de API pública (https) desplegada.<br>
     <button id="setApiBtn" style="margin-top:.4rem;padding:.35rem .6rem;font-size:.65rem;">Configurar API</button>
     <button id="clearApiBtn" style="margin-top:.4rem;margin-left:.4rem;padding:.35rem .6rem;font-size:.65rem;background:#444;">Reset</button>
+    ${failed && API !== DEFAULT_PAGES_API ? `<button id="useDefaultApiBtn" style="margin-top:.4rem;margin-left:.4rem;padding:.35rem .6rem;font-size:.65rem;background:#2d4;">Usar default</button>` : ''}
+    ${failed ? `<div style="margin-top:.4rem;font-size:.6rem;opacity:.7;">Tip: si ves un dominio distinto al esperado, limpia override con Reset o localStorage.removeItem('SR_API').</div>` : ''}
   </div>`;
 }
 
@@ -117,6 +159,13 @@ function attachApiConfigHandlers() {
   if (clearBtn) {
     clearBtn.onclick = () => {
       localStorage.removeItem('SR_API');
+      location.reload();
+    };
+  }
+  const useDefaultBtn = document.getElementById('useDefaultApiBtn');
+  if (useDefaultBtn) {
+    useDefaultBtn.onclick = () => {
+      localStorage.setItem('SR_API', DEFAULT_PAGES_API);
       location.reload();
     };
   }
@@ -528,7 +577,17 @@ export function init() {
   const stored = localStorage.getItem('token');
   if (stored) state.token = stored;
   d('init', { token: !!state.token });
-  render();
+  render(); // primer render
+  // Lanzar health-check asíncrono (no bloquea UI)
+  healthCheckAndMaybeFallback().then(() => {
+    if (!lastNetworkError) {
+      // Re-render para quitar banner si se resolvió
+      render();
+    } else {
+      // Mantener banner actualizado
+      render();
+    }
+  });
   if (state.token) {
     // Carga asíncrona de datos para que el dashboard aparezca rápido
     loadDashboardData();

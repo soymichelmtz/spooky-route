@@ -104,11 +104,23 @@ async function api(path, options = {}) {
   if (state.token) headers['Authorization'] = 'Bearer ' + state.token;
   if (options.body && !headers['Content-Type']) headers['Content-Type'] = 'application/json';
   try {
-  const res = await fetch(buildUrl(path), { ...options, headers });
+    const url = buildUrl(path);
+    const res = await fetch(url, { ...options, headers });
     if (!res.ok) {
       let msg = 'Error';
-      try { msg = (await res.json()).error || msg; } catch {}
-      throw new Error(msg);
+      let bodyText = '';
+      try {
+        const ct = res.headers.get('content-type') || '';
+        if (ct.includes('application/json')) {
+          const j = await res.json();
+          bodyText = JSON.stringify(j);
+          msg = j.error || j.message || msg;
+        } else {
+          bodyText = await res.text();
+        }
+      } catch (e) { bodyText = '(parse fail)'; }
+      console.warn('[API_ERROR]', { path, url, status: res.status, statusText: res.statusText, body: bodyText });
+      throw new Error(msg + ' (HTTP ' + res.status + ')');
     }
     lastNetworkError = null;
     return res.json();

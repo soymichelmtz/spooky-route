@@ -33,6 +33,11 @@ router.post('/register', async (req, res) => {
   }
 });
 
+// Aclaración si alguien hace GET directo en el navegador
+router.get('/register', (_req, res) => {
+  res.status(405).json({ error: 'Usa POST /auth/register con JSON {"username","password"}' });
+});
+
 // Endpoint para verificar disponibilidad de username
 router.get('/check-username', async (req, res) => {
   try {
@@ -70,6 +75,10 @@ router.post('/login', async (req, res) => {
     console.error(e);
     res.status(500).json({ error: 'Error en login' });
   }
+});
+
+router.get('/login', (_req, res) => {
+  res.status(405).json({ error: 'Usa POST /auth/login con JSON {"username","password"}' });
 });
 
 export function authMiddleware(req, res, next) {

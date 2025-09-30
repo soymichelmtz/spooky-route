@@ -3,7 +3,7 @@
 // Detección sencilla para Github Pages: permitir configurar API externa via localStorage 'SR_API' o query ?api=
 // Nuevo: si estamos en GitHub Pages y no se configuró nada, usar por defecto el backend público desplegado en Render.
 let API = 'http://localhost:3001';
-const DEFAULT_PAGES_API = 'https://spooky-route.onrender.com';
+const DEFAULT_PAGES_API = 'https://spooky-route.onrender.com/api';
 let lastNetworkError = null;
 let lastHealthCheck = { ok: null, triedFallback: false };
 try {
@@ -20,7 +20,22 @@ try {
     API = DEFAULT_PAGES_API;
     console.info('[SpookyRoute] Usando API por defecto para Pages:', API);
   }
+  // Autocorrección: si el usuario guardó un dominio incorrecto (ej: spooky-route-api.onrender.com) sustituir por el canonical
+  if (isPages && /spooky-route-api\.onrender\.com/i.test(API)) {
+    console.warn('[SpookyRoute] Corrigiendo dominio API mal escrito a default:', DEFAULT_PAGES_API);
+    API = DEFAULT_PAGES_API;
+    localStorage.setItem('SR_API', DEFAULT_PAGES_API);
+  }
 } catch(_) {}
+
+function buildUrl(path) {
+  const base = API.replace(/\/+$/,'');
+  if (base.endsWith('/api')) {
+    if (path === '/api') return base; // health-check directo
+    if (path.startsWith('/api/')) path = path.slice(4);
+  }
+  return base + path;
+}
 
 async function healthCheckAndMaybeFallback() {
   const isPages = location.hostname.endsWith('github.io');
@@ -32,7 +47,9 @@ async function healthCheckAndMaybeFallback() {
     return fetch(url, { signal: ctrl.signal }).finally(() => clearTimeout(to));
   }
   try {
-    const res = await fetchWithTimeout(API.replace(/\/$/, '') + '/api', 4000);
+  // Construir URL de health: si base ya termina en /api, usamos esa misma; si no, añadimos /api
+  const healthUrl = API.replace(/\/+$/,'').endsWith('/api') ? API.replace(/\/+$/,'') : API.replace(/\/+$/,'') + '/api';
+  const res = await fetchWithTimeout(healthUrl, 4000);
     if (!res.ok) throw new Error('status ' + res.status);
     lastHealthCheck.ok = true;
     return;
@@ -45,7 +62,8 @@ async function healthCheckAndMaybeFallback() {
     if (!lastHealthCheck.triedFallback) {
       lastHealthCheck.triedFallback = true;
       try {
-        const testRes = await fetch(DEFAULT_PAGES_API + '/api', { method: 'GET' });
+  const testHealth = DEFAULT_PAGES_API.endsWith('/api') ? DEFAULT_PAGES_API : (DEFAULT_PAGES_API.replace(/\/+$/,'') + '/api');
+  const testRes = await fetch(testHealth, { method: 'GET' });
         if (testRes.ok) {
           console.warn('[SpookyRoute] API configurada falló, cambiando a default Render:', DEFAULT_PAGES_API);
           API = DEFAULT_PAGES_API;
@@ -81,7 +99,7 @@ async function api(path, options = {}) {
   if (state.token) headers['Authorization'] = 'Bearer ' + state.token;
   if (options.body && !headers['Content-Type']) headers['Content-Type'] = 'application/json';
   try {
-    const res = await fetch(API + path, { ...options, headers });
+  const res = await fetch(buildUrl(path), { ...options, headers });
     if (!res.ok) {
       let msg = 'Error';
       try { msg = (await res.json()).error || msg; } catch {}
@@ -630,7 +648,7 @@ function setupAutocomplete() {
     if (geoAbortController) geoAbortController.abort();
     geoAbortController = new AbortController();
     try {
-      const res = await fetch(API + '/geocode/search?q=' + encodeURIComponent(q), { signal: geoAbortController.signal });
+  const res = await fetch(buildUrl('/geocode/search?q=' + encodeURIComponent(q)), { signal: geoAbortController.signal });
       if (!res.ok) { d('autocomplete:errorStatus', res.status); return; }
       const data = await res.json();
       d('autocomplete:results', data.length);

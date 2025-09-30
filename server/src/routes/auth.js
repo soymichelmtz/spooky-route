@@ -72,8 +72,17 @@ router.post('/login', async (req, res) => {
     const token = jwt.sign({ sub: user.id, username: user.username }, JWT_SECRET, { expiresIn: TOKEN_EXP });
     res.json({ token });
   } catch (e) {
-    console.error(e);
-    res.status(500).json({ error: 'Error en login' });
+    // Detección de falta de migraciones (sqlite: "no such table")
+    const msg = (e && e.message) || '';
+    const missingTables = /no such table/i.test(msg);
+    const baseError = missingTables ? 'Migraciones no aplicadas en el servidor' : 'Error en login';
+    const payload = { error: baseError };
+    if (process.env.SAFE_ERROR_HINTS === '1') {
+      payload.hint = missingTables ? 'Ejecuta: npx prisma migrate deploy (o habilita AUTO_MIGRATE=1)' : 'Revisa logs del backend';
+      payload.raw = msg;
+    }
+    console.error('[auth.login] ERROR:', msg);
+    res.status(500).json(payload);
   }
 });
 

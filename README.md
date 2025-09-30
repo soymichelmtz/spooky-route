@@ -115,6 +115,19 @@ Dump rápido: `window._srDump()`.
 3. Iniciar backend: `npm run dev` (desde la raíz, delega a workspace `server`).
 4. Abrir `http://localhost:3001` (por defecto PORT=3001 en `.env`).
 
+### Variables de Entorno
+Revisa `server/.env.example` y crea tu propio `server/.env` (no se versiona):
+```
+DATABASE_URL="file:./dev.db"
+JWT_SECRET="<valor_aleatorio_largo>"
+PORT=3001
+```
+Generar un secreto:
+```
+node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
+```
+Rotar el secreto invalida tokens anteriores (los usuarios deben iniciar sesión de nuevo).
+
 ## Próximos Pasos Recomendados (Detalle)
 1. Validaciones (zod) en auth y houses.
 2. Normalizar `addressText` y utilizar `usernameNorm`.

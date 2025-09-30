@@ -1,17 +1,22 @@
 // SPA mínima vanilla para no bloquear avance (luego se migra a React/Vite)
 
 // Detección sencilla para Github Pages: permitir configurar API externa via localStorage 'SR_API' o query ?api=
+// Nuevo: si estamos en GitHub Pages y no se configuró nada, usar por defecto el backend público desplegado en Render.
 let API = 'http://localhost:3001';
 let lastNetworkError = null;
 try {
   const isPages = location.hostname.endsWith('github.io');
   const urlApi = new URLSearchParams(location.search).get('api');
   const storedApi = localStorage.getItem('SR_API');
-  if (urlApi) { localStorage.setItem('SR_API', urlApi); API = urlApi; }
-  else if (storedApi) { API = storedApi; }
-  else if (isPages) {
-    // Placeholder: el usuario debe proporcionar un backend desplegado públicamente
-    console.warn('Ejecutando en GitHub Pages. Configura API con ?api=https://tu-backend o localStorage.setItem("SR_API","https://...")');
+  if (urlApi) {
+    localStorage.setItem('SR_API', urlApi);
+    API = urlApi;
+  } else if (storedApi) {
+    API = storedApi;
+  } else if (isPages) {
+    // Default público para GitHub Pages si el usuario no definió otro.
+    API = 'https://spooky-route.onrender.com';
+    console.info('[SpookyRoute] Usando API por defecto para Pages:', API);
   }
 } catch(_) {}
 // Activar logs: localStorage.setItem('SR_DEBUG','1'); Desactivar: localStorage.removeItem('SR_DEBUG')

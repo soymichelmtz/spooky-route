@@ -7,11 +7,39 @@ import { PrismaClient } from '@prisma/client';
 import fetch from 'node-fetch';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { execSync } from 'child_process';
 
 dotenv.config();
 
 const app = express();
 const prisma = new PrismaClient();
+
+// Auto-migrate opcional (pensado para entornos como Render si se olvida el comando de deploy)
+// Establece AUTO_MIGRATE=1 en variables de entorno del servicio para habilitarlo.
+if (process.env.AUTO_MIGRATE === '1') {
+  try {
+    // Ejecutar en el directorio raíz del proyecto server (sube un nivel desde src)
+    const serverRoot = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
+    console.log('[startup] AUTO_MIGRATE=1 -> Ejecutando prisma migrate deploy...');
+    execSync('npx prisma migrate deploy', { stdio: 'inherit', cwd: serverRoot });
+    console.log('[startup] Migraciones aplicadas');
+  } catch (e) {
+    console.error('[startup] Falló auto-migrate:', e.message);
+  }
+}
+
+// Verificación temprana de tablas (detecta falta de migraciones cuando no se usa AUTO_MIGRATE)
+(async () => {
+  try {
+    await prisma.user.count();
+  } catch (e) {
+    if (/no such table/i.test(e.message)) {
+      console.error('[startup] Tablas inexistentes. Ejecuta: npx prisma migrate deploy');
+    } else {
+      console.error('[startup] Error revisando tablas:', e.message);
+    }
+  }
+})();
 app.use(cors());
 app.use(express.json());
 

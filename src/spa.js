@@ -31,8 +31,13 @@ try {
 function buildUrl(path) {
   const base = API.replace(/\/+$/,'');
   if (base.endsWith('/api')) {
-    if (path === '/api') return base; // health-check directo
+    // Health check directo
+    if (path === '/api') return base;
+    // Si el consumidor ya pone /api/ al inicio, recortar para evitar duplicados
     if (path.startsWith('/api/')) path = path.slice(4);
+    // Para cualquier otra ruta (ej: /auth/login, /houses, /geocode/...) necesitamos la raíz sin /api
+    const root = base.slice(0, -4); // elimina '/api'
+    return root + path;
   }
   return base + path;
 }

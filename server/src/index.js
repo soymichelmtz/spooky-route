@@ -3,6 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import authRoutes from './routes/auth.js';
 import houseRoutes from './routes/house.js';
+import { PrismaClient } from '@prisma/client';
 import fetch from 'node-fetch';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -10,6 +11,7 @@ import { fileURLToPath } from 'url';
 dotenv.config();
 
 const app = express();
+const prisma = new PrismaClient();
 app.use(cors());
 app.use(express.json());
 
@@ -18,6 +20,17 @@ const __dirname = path.dirname(__filename);
 
 app.get('/api', (_req, res) => {
   res.json({ status: 'ok', message: 'Spooky Route API' });
+});
+
+// Health de base de datos: verifica que el esquema esté migrado (intenta contar usuarios)
+app.get('/api/db-health', async (_req, res) => {
+  try {
+    await prisma.user.count();
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('db-health error', e.message);
+    res.status(500).json({ ok: false, error: 'DB no migrada o inaccesible' });
+  }
 });
 
 app.use('/auth', authRoutes);
